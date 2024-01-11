@@ -41,7 +41,7 @@
 
         <hr>
 
-        <button id="detectAllButton" class="btn btn-primary btn-block mb-2" onclick="detectAllCodeSmells()">Detect All</button>
+        <button id="detectAllButton" class="btn btn-primary btn-block mb-2" onclick="detectAllCodeSmells();">Detect All</button>
 
         {% with messages = get_flashed_messages() %}
             {% if messages %}
@@ -71,7 +71,7 @@
                     {% for file in large_class_files %}
                         <li class="list-group-item">
                             <a href="{{ url_for('view', filename=file) }}">{{ file }}</a>
-                            <a id="large_class_detect_{{ loop.index0 }}" href="{{ url_for('detect_large_class', filename=file) }}" class="btn btn-info btn-sm ml-2 float-right" onclick="detectCodeSmell(this)">Detect Large Class</a>
+                            <a id="large_class_detect_{{ loop.index0 }}" href="{{ url_for('detect_large_class', filename=file) }}" class="btn btn-info btn-sm ml-2 float-right" onclick="detectCodeSmell(this)">Detect</a>
                             <span id="large_class_result_{{ loop.index0 }}"></span>
                             <a href="{{ url_for('delete', filename=file) }}" class="btn btn-danger btn-sm float-right">Delete</a>
                         </li>
@@ -85,7 +85,7 @@
                     {% for file in long_method_files %}
                         <li class="list-group-item">
                             <a href="{{ url_for('view', filename=file) }}">{{ file }}</a>
-                            <a id="long_method_detect_{{ loop.index0 }}" href="{{ url_for('detect_long_method', filename=file) }}" class="btn btn-info btn-sm ml-2 float-right" onclick="detectCodeSmell(this)">Detect Long Method</a>
+                            <a id="long_method_detect_{{ loop.index0 }}" href="{{ url_for('detect_long_method', filename=file) }}" class="btn btn-info btn-sm ml-2 float-right" onclick="detectCodeSmell(this)">Detect</a>
                             <span id="long_method_result_{{ loop.index0 }}"></span>
                             <a href="{{ url_for('delete', filename=file) }}" class="btn btn-danger btn-sm float-right">Delete</a>
                         </li>
@@ -98,7 +98,9 @@
             function detectAllCodeSmells() {
                 // Select all detect buttons
                 var detectButtons = document.querySelectorAll('[id^="large_class_detect_"], [id^="long_method_detect_"]');
-        
+                button = document.getElementById("detectAllButton")
+                button.style.display = 'none';
+
                 // Loop through each detect button and trigger click event
                 detectButtons.forEach(function(button) {
                     button.click();
@@ -127,10 +129,8 @@
                         var result = JSON.parse(xhr.responseText);
                         var resultElement = document.getElementById(resultId);
                         resultElement.innerHTML =
-                            '<strong>Smell:</strong> ' +
-                            result.code_smell +
-                            ' | <strong>Confidence:</strong> ' +
-                            result.confidence_score;
+                            '<p><strong>Confidence:</strong>' +
+                            result.confidence_score+'</p>';
                         if (result.code_smell === 'none') {
                             resultElement.style.color = 'green';
                         } else {
