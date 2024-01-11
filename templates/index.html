@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Smell Detector</title>
+    <!-- Bootstrap CSS CDN -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <!-- SweetAlert2 CDN for toasts -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11">
+    <link rel="apple-touch-icon" sizes="57x57" href="static/apple-icon-57x57.png">
+    <link rel="apple-touch-icon" sizes="60x60" href="static/apple-icon-60x60.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="static/apple-icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="76x76" href="static/apple-icon-76x76.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="static/apple-icon-114x114.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="static/apple-icon-120x120.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="static/apple-icon-144x144.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="static/apple-icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="static/apple-icon-180x180.png">
+    <link rel="icon" type="image/png" sizes="192x192"  href="/android-icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="static/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="static/favicon-96x96.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="static/favicon-16x16.png">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="msapplication-TileColor" content="#ffffff">
+    <meta name="msapplication-TileImage" content="/ms-icon-144x144.png">
+    <meta name="theme-color" content="#ffffff">
+
+</head>
+<body>
+    <div class="container mt-4">
+        <h1>Python Code Smell Detector</h1>
+        <hr>
+        <form action="/upload" method="post" enctype="multipart/form-data">
+            <div class="custom-file mb-4">
+                <input type="file" class="custom-file-input" id="fileInput" name="files[]" accept=".py" multiple onchange="this.form.submit()">
+                <label class="custom-file-label" for="fileInput">Choose files</label>
+            </div>
+        </form>
+
+        <hr>
+
+        <button id="detectAllButton" class="btn btn-primary btn-block mb-2" onclick="detectAllCodeSmells()">Detect All</button>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+                <script>
+                    document.addEventListener('DOMContentLoaded', function () {
+                        {% for message in messages %}
+                            Swal.fire({
+                                toast: true,
+                                position: 'top-end',
+                                icon: '{% if 'error' in message %}error{% else %}success{% endif %}',
+                                title: '{{ message }}',
+                                showConfirmButton: false,
+                                timer: 3000
+                            });
+                        {% endfor %}
+                    });
+                </script>
+            {% endif %}
+        {% endwith %}
+
+        <div class="row">
+            <div class="col-md-6">
+                <h1>Large Class</h1>
+                <br>
+                <ul class="list-group">
+                    {% for file in large_class_files %}
+                        <li class="list-group-item">
+                            <a href="{{ url_for('view', filename=file) }}">{{ file }}</a>
+                            <a id="large_class_detect_{{ loop.index0 }}" href="{{ url_for('detect_large_class', filename=file) }}" class="btn btn-info btn-sm ml-2 float-right" onclick="detectCodeSmell(this)">Detect Large Class</a>
+                            <span id="large_class_result_{{ loop.index0 }}"></span>
+                            <a href="{{ url_for('delete', filename=file) }}" class="btn btn-danger btn-sm float-right">Delete</a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <h1>Long Method</h1>
+                <br>
+                <ul class="list-group">
+                    {% for file in long_method_files %}
+                        <li class="list-group-item">
+                            <a href="{{ url_for('view', filename=file) }}">{{ file }}</a>
+                            <a id="long_method_detect_{{ loop.index0 }}" href="{{ url_for('detect_long_method', filename=file) }}" class="btn btn-info btn-sm ml-2 float-right" onclick="detectCodeSmell(this)">Detect Long Method</a>
+                            <span id="long_method_result_{{ loop.index0 }}"></span>
+                            <a href="{{ url_for('delete', filename=file) }}" class="btn btn-danger btn-sm float-right">Delete</a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        
+        <script>
+            function detectAllCodeSmells() {
+                // Select all detect buttons
+                var detectButtons = document.querySelectorAll('[id^="large_class_detect_"], [id^="long_method_detect_"]');
+        
+                // Loop through each detect button and trigger click event
+                detectButtons.forEach(function(button) {
+                    button.click();
+                });
+            }
+
+            function detectCodeSmell(button, smellType) {
+                var resultId = button.id.replace('_detect_', '_result_');
+        
+                // Create a spinner element
+                var spinner = document.createElement('span');
+                spinner.className = 'spinner-border spinner-border-sm mr-2';
+                spinner.setAttribute('role', 'status');
+                spinner.setAttribute('aria-hidden', 'true');
+        
+                // Replace button text with spinner
+                var buttonText = button.innerHTML;
+                button.innerHTML = '';
+                button.appendChild(spinner);
+        
+                var xhr = new XMLHttpRequest();
+                xhr.open('GET', button.href, true);
+        
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState === 4 && xhr.status === 200) {
+                        var result = JSON.parse(xhr.responseText);
+                        var resultElement = document.getElementById(resultId);
+                        resultElement.innerHTML =
+                            '<strong>Smell:</strong> ' +
+                            result.code_smell +
+                            ' | <strong>Confidence:</strong> ' +
+                            result.confidence_score;
+                        if (result.code_smell === 'none') {
+                            resultElement.style.color = 'green';
+                        } else {
+                            resultElement.style.color = 'red';
+                        }
+        
+                        // Revert button text to original state
+                        button.style.display = 'none';
+        
+                        // Add smell label next to the file name
+                        var smellLabel = document.createElement('span');
+                        smellLabel.className =
+                            'ml-2 badge badge-' +
+                            (result.code_smell === 'none' ? 'success' : 'danger');
+                        smellLabel.innerHTML =
+                            result.code_smell.charAt(0).toUpperCase() +
+                            result.code_smell.slice(1); // Capitalize the first letter
+                        button.parentNode.appendChild(smellLabel);
+        
+                        // Send detection result to the server
+                        var xhrResult = new XMLHttpRequest();
+                        xhrResult.open('POST', '/detection_result', true);
+                        xhrResult.setRequestHeader('Content-Type', 'application/json');
+                        xhrResult.onreadystatechange = function() {
+                            if (xhrResult.readyState === 4 && xhrResult.status === 200) {
+                                console.log('Result sent successfully!');
+                            }
+                        };
+                        xhrResult.send(JSON.stringify(result));
+                    }
+                };
+        
+                xhr.send();
+                event.preventDefault();
+            }
+
+        </script>
+        
+    </div>
+
+    <!-- Bootstrap JS and Popper.js CDN (for optional Bootstrap features) -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
