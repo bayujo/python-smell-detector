@@ -73,7 +73,7 @@
                             <a href="{{ url_for('view', filename=file) }}">{{ file }}</a>
                             <a id="large_class_detect_{{ loop.index0 }}" href="{{ url_for('detect_large_class', filename=file) }}" class="btn btn-info btn-sm ml-2 float-right" onclick="detectCodeSmell(this)">Detect</a>
                             <span id="large_class_result_{{ loop.index0 }}"></span>
-                            <a href="{{ url_for('delete', filename=file) }}" class="btn btn-danger btn-sm float-right">Delete</a>
+                            <a href="#" onclick="deleteFile('{{ file }}', 'large_class', this)" class="btn btn-danger btn-sm float-right">Delete</a>
                         </li>
                     {% endfor %}
                 </ul>
@@ -87,13 +87,13 @@
                             <a href="{{ url_for('view', filename=file) }}">{{ file }}</a>
                             <a id="long_method_detect_{{ loop.index0 }}" href="{{ url_for('detect_long_method', filename=file) }}" class="btn btn-info btn-sm ml-2 float-right" onclick="detectCodeSmell(this)">Detect</a>
                             <span id="long_method_result_{{ loop.index0 }}"></span>
-                            <a href="{{ url_for('delete', filename=file) }}" class="btn btn-danger btn-sm float-right">Delete</a>
+                            <a href="#" onclick="deleteFile('{{ file }}', 'long_method', this)" class="btn btn-danger btn-sm float-right">Delete</a>
                         </li>
                     {% endfor %}
                 </ul>
             </div>
         </div>
-        
+
         <script>
             function detectAllCodeSmells() {
                 // Select all detect buttons
@@ -109,21 +109,21 @@
 
             function detectCodeSmell(button, smellType) {
                 var resultId = button.id.replace('_detect_', '_result_');
-        
+
                 // Create a spinner element
                 var spinner = document.createElement('span');
                 spinner.className = 'spinner-border spinner-border-sm mr-2';
                 spinner.setAttribute('role', 'status');
                 spinner.setAttribute('aria-hidden', 'true');
-        
+
                 // Replace button text with spinner
                 var buttonText = button.innerHTML;
                 button.innerHTML = '';
                 button.appendChild(spinner);
-        
+
                 var xhr = new XMLHttpRequest();
                 xhr.open('GET', button.href, true);
-        
+
                 xhr.onreadystatechange = function() {
                     if (xhr.readyState === 4 && xhr.status === 200) {
                         var result = JSON.parse(xhr.responseText);
@@ -136,10 +136,10 @@
                         } else {
                             resultElement.style.color = 'red';
                         }
-        
+
                         // Revert button text to original state
                         button.style.display = 'none';
-        
+
                         // Add smell label next to the file name
                         var smellLabel = document.createElement('span');
                         smellLabel.className =
@@ -149,7 +149,7 @@
                             result.code_smell.charAt(0).toUpperCase() +
                             result.code_smell.slice(1); // Capitalize the first letter
                         button.parentNode.appendChild(smellLabel);
-        
+
                         // Send detection result to the server
                         var xhrResult = new XMLHttpRequest();
                         xhrResult.open('POST', '/detection_result', true);
@@ -162,13 +162,46 @@
                         xhrResult.send(JSON.stringify(result));
                     }
                 };
-        
+
                 xhr.send();
                 event.preventDefault();
             }
 
+            async function deleteFile(filename, codeSmellType, button) {
+                try {
+                    const response = await fetch(`/delete/${filename}`, {
+                        method: 'DELETE',
+                    });
+
+                    if (response.ok) {
+                        // If deletion is successful, remove the corresponding file row
+                        const listItem = button.parentElement;
+                        listItem.style.display = 'none';
+
+                        // If code smell detection was performed, hide the corresponding result span
+                        const resultId = `detect_${codeSmellType}_${button.parentElement.dataset.index}`;
+                        const resultElement = document.getElementById(resultId);
+                        if (resultElement) {
+                            resultElement.style.display = 'none';
+                        }
+
+                        // Trigger SweetAlert toast for successful deletion
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'File Deleted',
+                            showConfirmButton: false,
+                            timer: 1500,
+                        });
+                    } else {
+                        console.error('Error deleting file:', response.statusText);
+                    }
+                } catch (error) {
+                    console.error('An unexpected error occurred:', error);
+                }
+            }
+
         </script>
-        
+
     </div>
 
     <!-- Bootstrap JS and Popper.js CDN (for optional Bootstrap features) -->

@@ -66,7 +66,7 @@ def view(filename):
 
     return render_template('view.html', code=highlighted_code, filename=filename)
 
-@app.route('/delete/<filename>')
+@app.route('/delete/<filename>', methods=['DELETE'])
 def delete(filename):
     file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
 
@@ -76,7 +76,7 @@ def delete(filename):
     else:
         flash(f'File "{filename}" not found.', 'error')
 
-    return redirect(url_for('index'))
+    return jsonify({'message': f'File "{filename}" deleted successfully!'})
 
 @app.route('/detect_large_class/<filename>')
 def detect_large_class(filename):
@@ -97,14 +97,14 @@ def detect_large_class(filename):
         'single_comments': metrics.single_comments,
         'calculated_length': halstead_metrics.total.calculated_length,
     }
-    
+
     df = pd.DataFrame([row_data])
     normalized_data = normalize_dataframe(df, type)
     model_path = 'model/dt_large_class_model.pkl'  # Adjust the path to your large class model
     model = load_model(model_path)
 
     prediction, confidence_score = predict_data(model, normalized_data, type)
-    
+
     return jsonify({
         'filename': filename,
         'code_smell': 'large_class' if prediction[0] else 'none',
@@ -140,7 +140,7 @@ def detect_long_method(filename):
         'code_smell': 'long_method' if prediction[0] else 'none',
         'confidence_score': float(confidence_score[0]),
     })
-    
+
 @app.route('/detection_result', methods=['POST'])
 def detection_result():
     data = request.json
@@ -152,22 +152,22 @@ def detection_result():
 def extract_metrics(file_path):
     with open(file_path, 'r') as file:
         source_code = file.read()
-    
+
     metrics = analyze(source_code)
-    
+
     # Use the ast module from the Python standard library
     ast_node = ast.parse(source_code)
-    
+
     halstead_metrics = h_visit(ast_node)
-    
-    return metrics, halstead_metrics    
+
+    return metrics, halstead_metrics
 
 def normalize_dataframe(df, type):
     if type == 'large_class':
         loaded_scaler = joblib.load('model/large_class_scale.joblib')
     elif type == 'long_method':
         loaded_scaler = joblib.load('model/long_method_scale.joblib')
-        
+
     normalized_df = pd.DataFrame(loaded_scaler.transform(df), columns=df.columns)
     return normalized_df
 
@@ -180,13 +180,13 @@ def predict_data(model, data, type):
     if type == 'large_class':
         predictions = model.predict(data)
         probabilities = model.decision_function(data)
-    
+
     elif type == 'long_method':
         raw_scores = model.predict(data, output_margin=True)  # Output raw decision scores
         probabilities = 1 / (1 + np.exp(-raw_scores))  # Sigmoid function to convert scores to probabilities
-        
+
         predictions = (probabilities >= 0.5).astype(int)  # Convert probabilities to binary predictions
-        
+
     return predictions, probabilities
 
 
